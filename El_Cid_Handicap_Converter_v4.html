@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0b5d3b">
+<title>El Cid Handicap Converter</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f5f3;color:#17201b;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Arial,sans-serif}
+.app{max-width:680px;margin:auto;padding:14px 10px 30px}
+h1{text-align:center;margin:4px 0 2px;font-size:28px;color:#0b5d3b}
+.sub{text-align:center;color:#68736d;margin-bottom:14px;font-size:14px}
+.card{background:#fff;border-radius:15px;padding:14px;margin:9px 0;box-shadow:0 2px 10px #00000010}
+label{display:block;font-size:13px;font-weight:700;color:#4f5b55;margin:7px 0 5px}
+input{width:100%;padding:12px;border:2px solid #d2d9d4;border-radius:10px;font-size:17px}
+button{width:100%;border:0;border-radius:11px;padding:13px;background:#0b5d3b;color:#fff;font-size:16px;font-weight:800;margin-top:10px}
+.note{text-align:center;color:#68736d;font-size:12px;margin-top:8px}
+
+.player-header{text-align:left;margin:2px 2px 12px}
+.player-name{font-size:20px;font-weight:900}
+.player-index{font-size:13px;color:#68736d;margin-top:3px}
+
+.course{background:#fff;border:1px solid #d5ddd8;border-radius:14px;overflow:hidden;margin:12px 0}
+.course-title{background:#e7efeb;color:#17201b;font-size:18px;font-weight:900;padding:12px 13px}
+.tee-grid{display:grid;grid-template-columns:repeat(5,1fr)}
+.tee{min-width:0;text-align:center;border-right:1px solid #dfe5e1;padding:11px 3px 12px}
+.tee:last-child{border-right:0}
+.tee-name{font-size:11px;font-weight:700;color:#4f5b55;margin-bottom:6px}
+.tee-rating{font-size:11px;color:#68736d;min-height:14px}
+.playing{font-size:22px;font-weight:900;line-height:1.05;margin-top:3px}
+.unavailable{font-size:20px;color:#a0aaa4;font-weight:600}
+
+@media(max-width:430px){
+  .app{padding-left:8px;padding-right:8px}
+  .course-title{font-size:17px}
+  .tee{padding-left:2px;padding-right:2px}
+  .tee-name{font-size:10px}
+  .playing{font-size:21px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>El Cid Handicap Converter</h1>
+<div class="sub">Convert Handicap Index to Playing Handicap</div>
+
+<div class="card">
+  <label for="playerName">Name (optional)</label>
+  <input id="playerName" type="text" placeholder="Enter name">
+
+  <label for="handicapIndex">Handicap Index</label>
+  <input id="handicapIndex" type="number" min="-10" max="54" step="0.1"
+         inputmode="decimal" placeholder="Enter Handicap Index"
+         oninput="calculate()">
+
+  <button onclick="calculate()">Calculate Handicaps</button>
+  <div class="note">Playing Handicap = H.I. × Slope ÷ 113 + (Rating − 72)</div>
+</div>
+
+<div id="results" class="card">
+  <div class="empty">Enter a Handicap Index to see the playing handicaps.</div>
+</div>
+</div>
+
+<script>
+const tees = ["Org","Red","GOLD","MIXED","WHITE"];
+
+const courses = [
+  {
+    name:"Moro/Castilla",
+    ratings:[60.9,64.9,66.4,68.9,71.0],
+    slopes:[95,103,112,127,127]
+  },
+  {
+    name:"Moro/Marina",
+    ratings:[61.2,65.6,67.5,69.1,71.4],
+    slopes:[95,104,117,123,127]
+  },
+  {
+    name:"Castilla/Marina",
+    ratings:[60.8,64.1,66.8,68.5,70.5],
+    slopes:[96,102,111,120,124]
+  }
+];
+
+function courseHandicap(index,rating,slope){
+  return Math.max(0, Math.round(index * slope / 113 + (rating - 72)));
+}
+
+function calculate(){
+  const raw=document.getElementById("handicapIndex").value;
+  const box=document.getElementById("results");
+
+  if(raw===""){
+    box.innerHTML='<div class="empty">Enter a Handicap Index to see the playing handicaps.</div>';
+    return;
+  }
+
+  const index=parseFloat(raw);
+  if(!Number.isFinite(index)){
+    box.innerHTML='<div class="empty">Enter a valid Handicap Index.</div>';
+    return;
+  }
+
+  const name=document.getElementById("playerName").value.trim();
+  let html='<div class="player-header">';
+  if(name) html += `<div class="player-name">${escapeHtml(name)}</div>`;
+  html += `<div class="player-index">H.I. ${index.toFixed(1)}</div></div>`;
+
+  courses.forEach(course=>{
+    html += `<div class="course">
+      <div class="course-title">${course.name}</div>
+      <div class="tee-grid">`;
+
+    tees.forEach((tee,i)=>{
+      const ph=courseHandicap(index,course.ratings[i],course.slopes[i]);
+      const available = ph >= 0;
+      html += `<div class="tee">
+        <div class="tee-name">${tee}</div>
+        <div class="${available ? 'playing' : 'unavailable'}">${available ? ph : '—'}</div>
+      </div>`;
+    });
+
+    html += `</div></div>`;
+  });
+
+  box.innerHTML=html;
+}
+
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g,c=>({
+    "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
+  }[c]));
+}
+
+document.getElementById("playerName").addEventListener("input",()=>{
+  if(document.getElementById("handicapIndex").value) calculate();
+});
+</script>
+</body>
+</html>
